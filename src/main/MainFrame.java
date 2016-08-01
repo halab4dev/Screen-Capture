@@ -6,8 +6,14 @@
 package main;
 
 import com.alee.laf.WebLookAndFeel;
+import java.awt.AWTException;
 import java.awt.Desktop;
 import java.awt.EventQueue;
+import java.awt.Image;
+import java.awt.MenuItem;
+import java.awt.PopupMenu;
+import java.awt.SystemTray;
+import java.awt.TrayIcon;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
@@ -16,11 +22,13 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.Date;
 import java.util.Hashtable;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.ImageIcon;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
@@ -40,10 +48,26 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
 
     private static final Map<Integer, String> BUTTON_MAP = new Hashtable<>();
 
+    private static final String IMAGE_URL = "/resource/image/camera.png";
+    private static final Image IMAGE_ICON;
+    private static final TrayIcon TRAY_ICON;
+    private static final SystemTray SYSTEM_TRAY = SystemTray.getSystemTray();
+
+    private static final String TRAY_MENU_ABOUT = "About";
+    private static final String TRAY_MENU_SHOW = "Show";
+    private static final String TRAY_MENU_EXIT = "Exit";
+
+    private static final String TRAY_MENU_ABOUT_MESSAGE = "Screen Capture version 1.01\n"
+            + "Developed by Bao Ha (halab4it@gmail.com)";
+
     static {
         BUTTON_MAP.put(MouseEvent.BUTTON1, "LEFT MOUSE");
         BUTTON_MAP.put(MouseEvent.BUTTON2, "MIDDLE MOUSE");
         BUTTON_MAP.put(MouseEvent.BUTTON3, "RIGHT MOUSE");
+
+        URL imageURL = MainFrame.class.getResource(IMAGE_URL);
+        IMAGE_ICON = new ImageIcon(imageURL).getImage();
+        TRAY_ICON = new TrayIcon(IMAGE_ICON, "Screen Capture");
     }
 
     private static final String START = "Start";
@@ -52,7 +76,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
     private static final String DOT = ".";
 
     private static final String DEFAULT_FOLDER_ADDRESS = "C:\\Screen Capture";
-    
+
     private File saveFolder;
     private int hotKeyCode = NativeMouseEvent.BUTTON3;
     private boolean isCapturing = false;
@@ -61,10 +85,13 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
      * Creates new form MainFrame
      */
     public MainFrame() {
+        this.setIconImage(IMAGE_ICON);
         initComponents();
+        initMenu();
         initComboBox();
         initDefaultValues();
         addKeyListener();
+        initTrayIcon();
         try {
             GlobalScreen.setEventDispatcher(new SwingDispatchService());
             GlobalScreen.registerNativeHook();
@@ -72,6 +99,22 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
         } catch (NativeHookException ex) {
             Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
         }
+    }
+
+    private void initMenu() {
+        aboutItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                JOptionPane.showMessageDialog(null, TRAY_MENU_ABOUT_MESSAGE, TRAY_MENU_ABOUT,
+                        JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+
+        exitItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                SYSTEM_TRAY.remove(TRAY_ICON);
+                System.exit(0);
+            }
+        });
     }
 
     private void initComboBox() {
@@ -84,7 +127,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
     private void initDefaultValues() {
         txtSaveFolder.setText(DEFAULT_FOLDER_ADDRESS);
         saveFolder = new File(DEFAULT_FOLDER_ADDRESS);
-                txtHotKey.setText(BUTTON_MAP.get(MouseEvent.BUTTON2));
+        txtHotKey.setText(BUTTON_MAP.get(MouseEvent.BUTTON2));
         LOGGER.setUseParentHandlers(false); //disable jnativehook log        
     }
 
@@ -111,6 +154,44 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
 
             @Override
             public void mouseExited(MouseEvent e) {
+            }
+        });
+    }
+
+    private void initTrayIcon() {
+        PopupMenu popup = new PopupMenu();
+        MenuItem aboutItem = new MenuItem(TRAY_MENU_ABOUT);
+        MenuItem showItem = new MenuItem(TRAY_MENU_SHOW);
+        MenuItem exitItem = new MenuItem(TRAY_MENU_EXIT);
+        popup.add(aboutItem);
+        popup.addSeparator();
+        popup.add(showItem);
+        popup.add(exitItem);
+        TRAY_ICON.setPopupMenu(popup);
+
+        aboutItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                JOptionPane.showMessageDialog(null, TRAY_MENU_ABOUT_MESSAGE, TRAY_MENU_ABOUT,
+                        JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+
+        showItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                showWindow();
+            }
+        });
+
+        exitItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                SYSTEM_TRAY.remove(TRAY_ICON);
+                System.exit(0);
+            }
+        });
+
+        TRAY_ICON.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                showWindow();
             }
         });
     }
@@ -143,6 +224,11 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
         txtHotKey = new javax.swing.JTextField();
         cbFormat = new javax.swing.JComboBox();
         btnStartStop = new javax.swing.JButton();
+        menuBar = new javax.swing.JMenuBar();
+        mnAbout = new javax.swing.JMenu();
+        aboutItem = new javax.swing.JMenuItem();
+        menuSeperator = new javax.swing.JPopupMenu.Separator();
+        exitItem = new javax.swing.JMenuItem();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -180,6 +266,19 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
                 btnStartStopActionPerformed(evt);
             }
         });
+
+        mnAbout.setText("About");
+
+        aboutItem.setText("About");
+        mnAbout.add(aboutItem);
+        mnAbout.add(menuSeperator);
+
+        exitItem.setText("Exit");
+        mnAbout.add(exitItem);
+
+        menuBar.add(mnAbout);
+
+        setJMenuBar(menuBar);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -268,9 +367,24 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
             btnStartStop.setText(START);
         } else {
             btnStartStop.setText(STOP);
+            hideToSystemTray();
         }
         isCapturing = !isCapturing;
     }//GEN-LAST:event_btnStartStopActionPerformed
+
+    private void hideToSystemTray() {
+        try {
+            SYSTEM_TRAY.add(TRAY_ICON);
+            setVisible(false);
+        } catch (AWTException ex) {
+            LOGGER.log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void showWindow() {
+        SYSTEM_TRAY.remove(TRAY_ICON);
+        setVisible(true);
+    }
 
     /**
      * @param args the command line arguments
@@ -286,13 +400,18 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JMenuItem aboutItem;
     private javax.swing.JButton bntChoose;
     private javax.swing.JButton btnOpen;
     private javax.swing.JButton btnStartStop;
     private javax.swing.JComboBox cbFormat;
+    private javax.swing.JMenuItem exitItem;
     private javax.swing.JLabel lbFormat;
     private javax.swing.JLabel lbHotKey;
     private javax.swing.JLabel lbSaveFolder;
+    private javax.swing.JMenuBar menuBar;
+    private javax.swing.JPopupMenu.Separator menuSeperator;
+    private javax.swing.JMenu mnAbout;
     private javax.swing.JTextField txtHotKey;
     private javax.swing.JTextField txtSaveFolder;
     // End of variables declaration//GEN-END:variables
