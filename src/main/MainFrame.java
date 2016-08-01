@@ -56,6 +56,9 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
     private static final String TRAY_MENU_ABOUT = "About";
     private static final String TRAY_MENU_SHOW = "Show";
     private static final String TRAY_MENU_EXIT = "Exit";
+    
+    private static final String TRAY_MENU_CAPTION = "Screen Capture";
+    private static final String TRAY_MENU_MESSAGE = "Screen Capture now run in background";
 
     private static final String TRAY_MENU_ABOUT_MESSAGE = "Screen Capture version 1.01\n"
             + "Developed by Bao Ha (halab4it@gmail.com)";
@@ -376,6 +379,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
         try {
             SYSTEM_TRAY.add(TRAY_ICON);
             setVisible(false);
+            TRAY_ICON.displayMessage(TRAY_MENU_CAPTION, TRAY_MENU_MESSAGE, TrayIcon.MessageType.INFO);
         } catch (AWTException ex) {
             LOGGER.log(Level.SEVERE, null, ex);
         }
