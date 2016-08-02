@@ -23,8 +23,9 @@ import java.awt.event.WindowListener;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.util.Calendar;
 import java.util.Date;
-import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -46,7 +47,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
 
     private static final Logger LOGGER = Logger.getLogger(GlobalScreen.class.getPackage().getName());
 
-    private static final Map<Integer, String> BUTTON_MAP = new Hashtable<>();
+    private static final Map<Integer, String> BUTTON_MAP = new HashMap<>();
 
     private static final String IMAGE_URL = "/resource/image/camera.png";
     private static final Image IMAGE_ICON;
@@ -56,7 +57,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
     private static final String TRAY_MENU_ABOUT = "About";
     private static final String TRAY_MENU_SHOW = "Show";
     private static final String TRAY_MENU_EXIT = "Exit";
-    
+
     private static final String TRAY_MENU_CAPTION = "Screen Capture";
     private static final String TRAY_MENU_MESSAGE = "Screen Capture now run in background";
 
@@ -68,9 +69,11 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
         BUTTON_MAP.put(MouseEvent.BUTTON2, "MIDDLE MOUSE");
         BUTTON_MAP.put(MouseEvent.BUTTON3, "RIGHT MOUSE");
 
+        //Create tray icon 
         URL imageURL = MainFrame.class.getResource(IMAGE_URL);
         IMAGE_ICON = new ImageIcon(imageURL).getImage();
         TRAY_ICON = new TrayIcon(IMAGE_ICON, "Screen Capture");
+        TRAY_ICON.setImageAutoSize(true);
     }
 
     private static final String START = "Start";
@@ -100,12 +103,13 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
             GlobalScreen.registerNativeHook();
             GlobalScreen.addNativeMouseListener(this);
         } catch (NativeHookException ex) {
-            Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
+            LOGGER.log(Level.SEVERE, null, ex);
         }
     }
 
     private void initMenu() {
         aboutItem.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 JOptionPane.showMessageDialog(null, TRAY_MENU_ABOUT_MESSAGE, TRAY_MENU_ABOUT,
                         JOptionPane.INFORMATION_MESSAGE);
@@ -113,6 +117,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
         });
 
         exitItem.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 SYSTEM_TRAY.remove(TRAY_ICON);
                 System.exit(0);
@@ -163,29 +168,32 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
 
     private void initTrayIcon() {
         PopupMenu popup = new PopupMenu();
-        MenuItem aboutItem = new MenuItem(TRAY_MENU_ABOUT);
-        MenuItem showItem = new MenuItem(TRAY_MENU_SHOW);
-        MenuItem exitItem = new MenuItem(TRAY_MENU_EXIT);
-        popup.add(aboutItem);
+        MenuItem trayMenuItemAbout = new MenuItem(TRAY_MENU_ABOUT);
+        MenuItem trayMenuItemShow = new MenuItem(TRAY_MENU_SHOW);
+        MenuItem trayMenuItemExit = new MenuItem(TRAY_MENU_EXIT);
+        popup.add(trayMenuItemAbout);
         popup.addSeparator();
-        popup.add(showItem);
-        popup.add(exitItem);
+        popup.add(trayMenuItemShow);
+        popup.add(trayMenuItemExit);
         TRAY_ICON.setPopupMenu(popup);
 
-        aboutItem.addActionListener(new ActionListener() {
+        trayMenuItemAbout.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 JOptionPane.showMessageDialog(null, TRAY_MENU_ABOUT_MESSAGE, TRAY_MENU_ABOUT,
                         JOptionPane.INFORMATION_MESSAGE);
             }
         });
 
-        showItem.addActionListener(new ActionListener() {
+        trayMenuItemShow.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 showWindow();
             }
         });
 
-        exitItem.addActionListener(new ActionListener() {
+        trayMenuItemExit.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 SYSTEM_TRAY.remove(TRAY_ICON);
                 System.exit(0);
@@ -193,6 +201,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
         });
 
         TRAY_ICON.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 showWindow();
             }
@@ -397,6 +406,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
         WebLookAndFeel.install();
         /* Create and display the form */
         EventQueue.invokeLater(new Runnable() {
+            @Override
             public void run() {
                 new MainFrame().setVisible(true);
             }
@@ -440,7 +450,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
         try {
             GlobalScreen.unregisterNativeHook();
         } catch (NativeHookException ex) {
-            ex.printStackTrace();
+            LOGGER.log(Level.SEVERE, null, ex);
         }
         System.runFinalization();
         System.exit(0);
@@ -487,7 +497,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
 
     private File generateFileName() {
         Date date = new Date();
-        String fileName = date.getYear() + UNDERSCORE + date.getMonth() + UNDERSCORE + date.getDate()
+        String fileName = (date.getYear() + 1900) + UNDERSCORE + (date.getMonth() + 1) + UNDERSCORE + date.getDate()
                 + UNDERSCORE + date.getHours() + UNDERSCORE + date.getMinutes() + UNDERSCORE + date.getSeconds()
                 + UNDERSCORE + date.getTime() + DOT + cbFormat.getSelectedItem().toString();
         return new File(saveFolder.getAbsolutePath() + File.separator + fileName);
