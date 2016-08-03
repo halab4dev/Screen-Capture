@@ -20,10 +20,15 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.net.URL;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -61,7 +66,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
     private static final String TRAY_MENU_CAPTION = "Screen Capture";
     private static final String TRAY_MENU_MESSAGE = "Screen Capture now run in background";
 
-    private static final String TRAY_MENU_ABOUT_MESSAGE = "Screen Capture version 1.01\n"
+    private static final String TRAY_MENU_ABOUT_MESSAGE = "Screen Capture version 1.02\n"
             + "Developed by Bao Ha (halab4it@gmail.com)";
 
     static {
@@ -82,6 +87,8 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
     private static final String DOT = ".";
 
     private static final String DEFAULT_FOLDER_ADDRESS = "C:\\Screen Capture";
+
+    private static final String SETTING_FILE_PATH = "setting.dat";
 
     private File saveFolder;
     private int hotKeyCode = NativeMouseEvent.BUTTON3;
@@ -133,9 +140,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
     }
 
     private void initDefaultValues() {
-        txtSaveFolder.setText(DEFAULT_FOLDER_ADDRESS);
-        saveFolder = new File(DEFAULT_FOLDER_ADDRESS);
-        txtHotKey.setText(BUTTON_MAP.get(MouseEvent.BUTTON2));
+        loadSettting();
         LOGGER.setUseParentHandlers(false); //disable jnativehook log        
     }
 
@@ -206,16 +211,6 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
                 showWindow();
             }
         });
-    }
-
-    private int convertToNativeMouseEventButton(int mouseEventButton) {
-        if (mouseEventButton == MouseEvent.BUTTON1) {
-            return NativeMouseEvent.BUTTON1;
-        }
-        if (mouseEventButton == MouseEvent.BUTTON2) {
-            return NativeMouseEvent.BUTTON3;
-        }
-        return NativeMouseEvent.BUTTON2;
     }
 
     /**
@@ -357,8 +352,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
         folderChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         int returnValue = folderChooser.showOpenDialog(null);
         if (returnValue == JFileChooser.APPROVE_OPTION) {
-            saveFolder = folderChooser.getSelectedFile();
-            txtSaveFolder.setText(saveFolder.getAbsolutePath());
+            txtSaveFolder.setText(folderChooser.getSelectedFile().getAbsolutePath());
         }
     }//GEN-LAST:event_bntChooseActionPerformed
 
@@ -379,7 +373,9 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
             btnStartStop.setText(START);
         } else {
             btnStartStop.setText(STOP);
+            saveFolder = new File(txtSaveFolder.getText());
             hideToSystemTray();
+            saveSetting();
         }
         isCapturing = !isCapturing;
     }//GEN-LAST:event_btnStartStopActionPerformed
@@ -493,6 +489,52 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
 
     @Override
     public void nativeMouseDragged(NativeMouseEvent nme) {
+    }
+
+    private void saveSetting() {
+        try (FileOutputStream fileOutputStream = new FileOutputStream(SETTING_FILE_PATH);
+                OutputStreamWriter outputStreamWriter = new OutputStreamWriter(fileOutputStream);
+                PrintWriter printWriter = new PrintWriter(outputStreamWriter)) {
+            printWriter.println(txtSaveFolder.getText());
+            printWriter.println(hotKeyCode);
+            printWriter.println(cbFormat.getSelectedIndex());
+        } catch (IOException ex) {
+            LOGGER.log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void loadSettting() {
+        try (FileInputStream fileInputStream = new FileInputStream(SETTING_FILE_PATH);
+                InputStreamReader inputStreamReader = new InputStreamReader(fileInputStream);
+                BufferedReader bufferedReader = new BufferedReader(inputStreamReader)) {
+            txtSaveFolder.setText(bufferedReader.readLine());
+            hotKeyCode = Integer.parseInt(bufferedReader.readLine());
+            txtHotKey.setText(BUTTON_MAP.get(convertToMouseEventButton(hotKeyCode)));
+            cbFormat.setSelectedIndex(Integer.parseInt(bufferedReader.readLine()));
+        } catch (IOException ex) {
+            txtSaveFolder.setText(DEFAULT_FOLDER_ADDRESS);
+            txtHotKey.setText(BUTTON_MAP.get(MouseEvent.BUTTON2));
+        }
+    }
+
+    private int convertToMouseEventButton(int nativeMouseButon) {
+        if (nativeMouseButon == NativeMouseEvent.BUTTON1) {
+            return MouseEvent.BUTTON1;
+        }
+        if (nativeMouseButon == NativeMouseEvent.BUTTON3) {
+            return MouseEvent.BUTTON2;
+        }
+        return MouseEvent.BUTTON3;
+    }
+
+    private int convertToNativeMouseEventButton(int mouseEventButton) {
+        if (mouseEventButton == MouseEvent.BUTTON1) {
+            return NativeMouseEvent.BUTTON1;
+        }
+        if (mouseEventButton == MouseEvent.BUTTON2) {
+            return NativeMouseEvent.BUTTON3;
+        }
+        return NativeMouseEvent.BUTTON2;
     }
 
     private File generateFileName() {
