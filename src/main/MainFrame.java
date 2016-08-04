@@ -28,12 +28,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.net.URL;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.swing.ImageIcon;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -43,53 +45,51 @@ import org.jnativehook.NativeHookException;
 import org.jnativehook.SwingDispatchService;
 import org.jnativehook.mouse.NativeMouseEvent;
 import org.jnativehook.mouse.NativeMouseInputListener;
+import resource.Resource;
+import utils.MouseEventConverter;
+import utils.ScreenCapturer;
+import utils.SoundPlayer;
 
 /**
  *
  * @author Apollo
  */
 public class MainFrame extends JFrame implements ActionListener, WindowListener, NativeMouseInputListener {
-
+    
     private static final Logger LOGGER = Logger.getLogger(GlobalScreen.class.getPackage().getName());
-
+    
     private static final Map<Integer, String> BUTTON_MAP = new HashMap<>();
-
-    private static final String IMAGE_URL = "/resource/image/camera.png";
+    
     private static final Image IMAGE_ICON;
     private static final TrayIcon TRAY_ICON;
     private static final SystemTray SYSTEM_TRAY = SystemTray.getSystemTray();
-
+    
+    private static final String DOT = ".";
+    private static final String UNDERSCORE = "_";
+    private static final String START = "Start";
+    private static final String STOP = "Stop";
     private static final String TRAY_MENU_ABOUT = "About";
     private static final String TRAY_MENU_SHOW = "Show";
     private static final String TRAY_MENU_EXIT = "Exit";
-
     private static final String TRAY_MENU_CAPTION = "Screen Capture";
-    private static final String TRAY_MENU_MESSAGE = "Screen Capture now run in background";
-
-    private static final String TRAY_MENU_ABOUT_MESSAGE = "Screen Capture version 1.02\n"
+    private static final String TRAY_MENU_MESSAGE = "Screen Capture is now running in background";
+    private static final String TRAY_MENU_ABOUT_MESSAGE = "Screen Capture version 1.03\n"
             + "Developed by Bao Ha (halab4it@gmail.com)";
-
+    
     static {
         BUTTON_MAP.put(MouseEvent.BUTTON1, "LEFT MOUSE");
         BUTTON_MAP.put(MouseEvent.BUTTON2, "MIDDLE MOUSE");
         BUTTON_MAP.put(MouseEvent.BUTTON3, "RIGHT MOUSE");
 
-        //Create tray icon 
-        URL imageURL = MainFrame.class.getResource(IMAGE_URL);
-        IMAGE_ICON = new ImageIcon(imageURL).getImage();
+        //Create tray icon
+        IMAGE_ICON = new ImageIcon(Resource.ICON_IMAGE_URL).getImage();
         TRAY_ICON = new TrayIcon(IMAGE_ICON, "Screen Capture");
         TRAY_ICON.setImageAutoSize(true);
     }
-
-    private static final String START = "Start";
-    private static final String STOP = "Stop";
-    private static final String UNDERSCORE = "_";
-    private static final String DOT = ".";
-
-    private static final String DEFAULT_FOLDER_ADDRESS = "C:\\Screen Capture";
-
+    
     private static final String SETTING_FILE_PATH = "setting.dat";
-
+    private static final String DEFAULT_FOLDER_ADDRESS = "C:\\Screen Capture";
+    
     private File saveFolder;
     private int hotKeyCode = NativeMouseEvent.BUTTON3;
     private boolean isCapturing = false;
@@ -113,7 +113,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
             LOGGER.log(Level.SEVERE, null, ex);
         }
     }
-
+    
     private void initMenu() {
         aboutItem.addActionListener(new ActionListener() {
             @Override
@@ -122,7 +122,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
                         JOptionPane.INFORMATION_MESSAGE);
             }
         });
-
+        
         exitItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -131,46 +131,46 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
             }
         });
     }
-
+    
     private void initComboBox() {
         cbFormat.removeAllItems();
         cbFormat.addItem(PictureFormat.JPG);
         cbFormat.addItem(PictureFormat.BMP);
         cbFormat.addItem(PictureFormat.PNG);
     }
-
+    
     private void initDefaultValues() {
         loadSettting();
         LOGGER.setUseParentHandlers(false); //disable jnativehook log        
     }
-
+    
     private void addKeyListener() {
         txtHotKey.addMouseListener(new MouseListener() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 int buttonCode = e.getButton();
                 txtHotKey.setText(BUTTON_MAP.get(buttonCode));
-                hotKeyCode = convertToNativeMouseEventButton(buttonCode);
+                hotKeyCode = MouseEventConverter.convertToNativeMouseEventButton(buttonCode);
             }
-
+            
             @Override
             public void mousePressed(MouseEvent e) {
             }
-
+            
             @Override
             public void mouseReleased(MouseEvent e) {
             }
-
+            
             @Override
             public void mouseEntered(MouseEvent e) {
             }
-
+            
             @Override
             public void mouseExited(MouseEvent e) {
             }
         });
     }
-
+    
     private void initTrayIcon() {
         PopupMenu popup = new PopupMenu();
         MenuItem trayMenuItemAbout = new MenuItem(TRAY_MENU_ABOUT);
@@ -181,7 +181,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
         popup.add(trayMenuItemShow);
         popup.add(trayMenuItemExit);
         TRAY_ICON.setPopupMenu(popup);
-
+        
         trayMenuItemAbout.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -189,14 +189,14 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
                         JOptionPane.INFORMATION_MESSAGE);
             }
         });
-
+        
         trayMenuItemShow.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 showWindow();
             }
         });
-
+        
         trayMenuItemExit.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -204,7 +204,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
                 System.exit(0);
             }
         });
-
+        
         TRAY_ICON.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -231,6 +231,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
         txtHotKey = new javax.swing.JTextField();
         cbFormat = new javax.swing.JComboBox();
         btnStartStop = new javax.swing.JButton();
+        enableSoundCheckbox = new javax.swing.JCheckBox();
         menuBar = new javax.swing.JMenuBar();
         mnAbout = new javax.swing.JMenu();
         aboutItem = new javax.swing.JMenuItem();
@@ -274,6 +275,8 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
             }
         });
 
+        enableSoundCheckbox.setText("Enable Sound");
+
         mnAbout.setText("About");
 
         aboutItem.setText("About");
@@ -292,17 +295,12 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
+                .addGap(149, 149, 149)
+                .addComponent(btnStartStop, javax.swing.GroupLayout.PREFERRED_SIZE, 74, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 0, Short.MAX_VALUE))
+            .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(lbHotKey)
-                            .addComponent(txtHotKey, javax.swing.GroupLayout.PREFERRED_SIZE, 131, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(56, 56, 56)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(lbFormat)
-                            .addComponent(cbFormat, javax.swing.GroupLayout.PREFERRED_SIZE, 117, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(0, 86, Short.MAX_VALUE))
                     .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(txtSaveFolder)
@@ -312,11 +310,19 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
                                 .addComponent(bntChoose)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                                 .addComponent(btnOpen)))
-                        .addContainerGap())))
-            .addGroup(layout.createSequentialGroup()
-                .addGap(148, 148, 148)
-                .addComponent(btnStartStop, javax.swing.GroupLayout.PREFERRED_SIZE, 74, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(0, 0, Short.MAX_VALUE))
+                        .addContainerGap())
+                    .addGroup(layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(enableSoundCheckbox)
+                            .addGroup(layout.createSequentialGroup()
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(lbHotKey)
+                                    .addComponent(txtHotKey, javax.swing.GroupLayout.PREFERRED_SIZE, 131, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(56, 56, 56)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(lbFormat)
+                                    .addComponent(cbFormat, javax.swing.GroupLayout.PREFERRED_SIZE, 117, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                        .addGap(0, 86, Short.MAX_VALUE))))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -339,9 +345,11 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(txtHotKey, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(cbFormat, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(18, 18, 18)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(enableSoundCheckbox)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 13, Short.MAX_VALUE)
                 .addComponent(btnStartStop)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
         );
 
         pack();
@@ -379,7 +387,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
         }
         isCapturing = !isCapturing;
     }//GEN-LAST:event_btnStartStopActionPerformed
-
+    
     private void hideToSystemTray() {
         try {
             SYSTEM_TRAY.add(TRAY_ICON);
@@ -389,7 +397,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
             LOGGER.log(Level.SEVERE, null, ex);
         }
     }
-
+    
     private void showWindow() {
         SYSTEM_TRAY.remove(TRAY_ICON);
         setVisible(true);
@@ -415,6 +423,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
     private javax.swing.JButton btnOpen;
     private javax.swing.JButton btnStartStop;
     private javax.swing.JComboBox cbFormat;
+    private javax.swing.JCheckBox enableSoundCheckbox;
     private javax.swing.JMenuItem exitItem;
     private javax.swing.JLabel lbFormat;
     private javax.swing.JLabel lbHotKey;
@@ -429,17 +438,17 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
     public void actionPerformed(ActionEvent e) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
-
+    
     @Override
     public void windowOpened(WindowEvent e) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
-
+    
     @Override
     public void windowClosing(WindowEvent e) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
-
+    
     @Override
     public void windowClosed(WindowEvent e) {
         // Clean up the native hook.
@@ -451,46 +460,54 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
         System.runFinalization();
         System.exit(0);
     }
-
+    
     @Override
     public void windowIconified(WindowEvent e) {
     }
-
+    
     @Override
     public void windowDeiconified(WindowEvent e) {
     }
-
+    
     @Override
     public void windowActivated(WindowEvent e) {
     }
-
+    
     @Override
     public void windowDeactivated(WindowEvent e) {
     }
-
+    
     @Override
     public void nativeMouseClicked(NativeMouseEvent nme) {
         if (nme.getButton() == hotKeyCode && isCapturing) {
             ScreenCapturer.createScreenCapture(generateFileName(), cbFormat.getSelectedItem().toString());
+            if (enableSoundCheckbox.isSelected()) {
+                try {
+                    AudioInputStream cameraSound = AudioSystem.getAudioInputStream(Resource.CAMERA_SOUND_URL);
+                    SoundPlayer.playSound(cameraSound);
+                } catch (UnsupportedAudioFileException | IOException ex) {
+                    Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
         }
     }
-
+    
     @Override
     public void nativeMousePressed(NativeMouseEvent nme) {
     }
-
+    
     @Override
     public void nativeMouseReleased(NativeMouseEvent nme) {
     }
-
+    
     @Override
     public void nativeMouseMoved(NativeMouseEvent nme) {
     }
-
+    
     @Override
     public void nativeMouseDragged(NativeMouseEvent nme) {
     }
-
+    
     private void saveSetting() {
         try (FileOutputStream fileOutputStream = new FileOutputStream(SETTING_FILE_PATH);
                 OutputStreamWriter outputStreamWriter = new OutputStreamWriter(fileOutputStream);
@@ -498,45 +515,27 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
             printWriter.println(txtSaveFolder.getText());
             printWriter.println(hotKeyCode);
             printWriter.println(cbFormat.getSelectedIndex());
+            printWriter.println(enableSoundCheckbox.isSelected());
         } catch (IOException ex) {
             LOGGER.log(Level.SEVERE, null, ex);
         }
     }
-
+    
     private void loadSettting() {
         try (FileInputStream fileInputStream = new FileInputStream(SETTING_FILE_PATH);
                 InputStreamReader inputStreamReader = new InputStreamReader(fileInputStream);
                 BufferedReader bufferedReader = new BufferedReader(inputStreamReader)) {
             txtSaveFolder.setText(bufferedReader.readLine());
             hotKeyCode = Integer.parseInt(bufferedReader.readLine());
-            txtHotKey.setText(BUTTON_MAP.get(convertToMouseEventButton(hotKeyCode)));
+            txtHotKey.setText(BUTTON_MAP.get(MouseEventConverter.convertToMouseEventButton(hotKeyCode)));
             cbFormat.setSelectedIndex(Integer.parseInt(bufferedReader.readLine()));
+            enableSoundCheckbox.setSelected(Boolean.parseBoolean(bufferedReader.readLine()));
         } catch (IOException ex) {
             txtSaveFolder.setText(DEFAULT_FOLDER_ADDRESS);
             txtHotKey.setText(BUTTON_MAP.get(MouseEvent.BUTTON2));
         }
     }
-
-    private int convertToMouseEventButton(int nativeMouseButon) {
-        if (nativeMouseButon == NativeMouseEvent.BUTTON1) {
-            return MouseEvent.BUTTON1;
-        }
-        if (nativeMouseButon == NativeMouseEvent.BUTTON3) {
-            return MouseEvent.BUTTON2;
-        }
-        return MouseEvent.BUTTON3;
-    }
-
-    private int convertToNativeMouseEventButton(int mouseEventButton) {
-        if (mouseEventButton == MouseEvent.BUTTON1) {
-            return NativeMouseEvent.BUTTON1;
-        }
-        if (mouseEventButton == MouseEvent.BUTTON2) {
-            return NativeMouseEvent.BUTTON3;
-        }
-        return NativeMouseEvent.BUTTON2;
-    }
-
+    
     private File generateFileName() {
         Date date = new Date();
         String fileName = (date.getYear() + 1900) + UNDERSCORE + (date.getMonth() + 1) + UNDERSCORE + date.getDate()
