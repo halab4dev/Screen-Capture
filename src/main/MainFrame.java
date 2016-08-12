@@ -105,6 +105,7 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
         initDefaultValues();
         addKeyListener();
         initTrayIcon();
+        addWindowEvent();
         try {
             GlobalScreen.setEventDispatcher(new SwingDispatchService());
             GlobalScreen.registerNativeHook();
@@ -209,6 +210,40 @@ public class MainFrame extends JFrame implements ActionListener, WindowListener,
             @Override
             public void actionPerformed(ActionEvent e) {
                 showWindow();
+            }
+        });
+    }
+    
+    private void addWindowEvent(){
+        this.addWindowListener(new WindowListener() {
+
+            @Override
+            public void windowOpened(WindowEvent e) {
+            }
+
+            @Override
+            public void windowClosing(WindowEvent e) {
+            }
+
+            @Override
+            public void windowClosed(WindowEvent e) {
+            }
+
+            @Override
+            public void windowIconified(WindowEvent e) {
+                hideToSystemTray();
+            }
+
+            @Override
+            public void windowDeiconified(WindowEvent e) {
+            }
+
+            @Override
+            public void windowActivated(WindowEvent e) {
+            }
+
+            @Override
+            public void windowDeactivated(WindowEvent e) {
             }
         });
     }
